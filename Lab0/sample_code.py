@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
-import gymnasium as gym
+import gym
 
 env = gym.make("ALE/Enduro-v5", render_mode="human")
 

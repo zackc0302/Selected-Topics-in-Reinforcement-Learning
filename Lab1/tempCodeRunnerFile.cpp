@@ -1,0 +1,1 @@
+std::ostream& debug = *(new std::ofstream);
