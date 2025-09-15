@@ -7,7 +7,7 @@
  * http://www.aigames.nctu.edu.tw
  *
  * References:
- * [1] Szubert, Marcin, and Wojciech Ja≈õkowski. "Temporal difference learning of n-tuple networks for the game 2048."
+ * [1] Szubert, Marcin, and Wojciech Ja?kowski. "Temporal difference learning of n-tuple networks for the game 2048."
  * Computational Intelligence and Games (CIG), 2014 IEEE Conference on. IEEE, 2014.
  * [2] Wu, I-Chen, et al. "Multi-stage temporal difference learning for 2048."
  * Technologies and Applications of Artificial Intelligence. Springer International Publishing, 2014. 366-378.
@@ -520,12 +520,12 @@ public:
 	}
 
 protected:
-
+	
 	size_t indexof(const std::vector<int>& patt, const board& b) const {
-		// TODO
+		// TODO1
 		size_t index = 0;
 		for (size_t i = 0; i < patt.size(); i++)
-			index |= b.at(patt[i]) << (4 * i); // Â∞áÁ¨¨ i ÂÄãÊñπÂ°äÁöÑÂÄºÔºåÊîæÂà∞Á¨¨ i ÂÄã 4-bit ÁöÑ‰ΩçÁΩÆ
+			index |= b.at(patt[i]) << (4 * i); // ±N≤ƒ i ≠”§Ë∂Ù™∫≠»°A©Ò®Ï≤ƒ i ≠” 4-bit ™∫¶Ï∏m
 		return index;
 	}
 
@@ -698,17 +698,41 @@ public:
 	 * you may simply return state() if no valid move
 	 */
 	state select_best_move(const board& b) const {
-		state best(b); 
-		state moves[4] = { state(b, 0), state(b, 1), state(b, 2), state(b, 3) };
-		for (state& move : moves) {
-			if (move.is_valid()) {
-				move.set_value(move.reward() + estimate(move.after_state()));
-				if (move.value() > best.value()) {
-					best = move; 
+		state after[4] = { 0, 1, 2, 3 }; // up, right, down, left
+		state* best = after;
+		for (state* move = after; move != after + 4; move++) {
+			if (move->assign(b)) {
+				// TODO
+				board after_state = move->after_state();
+				int space[16], num=0;
+				for (int i = 0; i < 16; i++)
+					if (after_state.at(i) == 0) {
+						space[num++] = i;
+					}
+				float expected_value = 0.0f;
+				if(num>0){
+					float total_value_sum = 0.0f;
+					for (int i = 0; i < num; i++) {
+						board tmp1 = after_state;
+						tmp1.set(space[i], 1);
+						total_value_sum += 0.8f * estimate(tmp1);
+
+						board tmp2 = after_state;
+						tmp2.set(space[i], 2);
+						total_value_sum += 0.2f * estimate(tmp2);
+					}
+					expected_value = total_value_sum / num;
 				}
+				move->set_value(move->reward() + expected_value);
+				
+				if (move->value() > best->value())
+					best = move;
+			} else {
+				move->set_value(-std::numeric_limits<float>::max());
 			}
+			// debug << "test " << *move;
 		}
-		return best;
+		return *best;
 	}
 
 	/**
@@ -730,6 +754,7 @@ public:
 		float target = 0;
 		for (path.pop_back() /* ignore the last record */; path.size(); path.pop_back()) {
 			state& st = path.back();
+			// error
 			float error = target - estimate(st.after_state());
 			target = st.reward() + update(st.after_state(), alpha * error);
 			// debug << "update error = " << error << " for" << std::endl << st.afterstate();
@@ -853,10 +878,10 @@ int main(int argc, const char* argv[]) {
 
 	// set the learning parameters
 	float alpha = 0.1;
-	size_t total = 100000;
-	// Âõ∫ÂÆö seed
+	size_t total = 200000;
+	// ©T©w seed
 	unsigned seed = 0;
-	// __asm__ __volatile__ ("rdtsc" : "=a" (seed));
+	__asm__ __volatile__ ("rdtsc" : "=a" (seed));
 	info << "alpha = " << alpha << std::endl;
 	info << "total = " << total << std::endl;
 	info << "seed = " << seed << std::endl;
@@ -867,9 +892,15 @@ int main(int argc, const char* argv[]) {
 	tdl.add_feature(new pattern({ 4, 5, 6, 7, 8, 9 }));
 	tdl.add_feature(new pattern({ 0, 1, 2, 4, 5, 6 }));
 	tdl.add_feature(new pattern({ 4, 5, 6, 8, 9, 10 }));
+	tdl.add_feature(new pattern({ 0, 1, 2, 3, 7, 11 }));
+	tdl.add_feature(new pattern({ 0, 1, 2, 3, 4, 8 }));
+
+	// Add 2*2 features
+	tdl.add_feature(new pattern({0, 1, 4, 5})); 
+	tdl.add_feature(new pattern({1, 2, 5, 6})); 
 
 	// restore the model from file
-	tdl.load("2048.bin");
+	// tdl.load("weights.bin");
 
 	// train the model
 	std::vector<state> path;
@@ -904,7 +935,7 @@ int main(int argc, const char* argv[]) {
 	}
 
 	// store the model into file
-	tdl.save("2048.bin");
+	tdl.save("weights.bin");
 
 	return 0;
 }
