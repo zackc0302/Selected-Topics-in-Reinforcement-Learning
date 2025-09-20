@@ -463,8 +463,10 @@ public:
 
 	/**
 	 * estimate the value of a given board
+	 * 將不同構面的權重值加總 = 盤面估值
 	 */
 	virtual float estimate(const board& b) const {
+		// TODO
 		float value = 0;
 		for(const auto& it:isomorphic){
 			size_t idx = indexof(it, b);
@@ -475,6 +477,7 @@ public:
 
 	/**
 	 * update the value of a given board, and return its updated value
+	 * 更新各盤面的價值(operator)，再透過更新的價值算出新盤面價值
 	 */
 	virtual float update(const board& b, float u) {
 		// TODO
@@ -522,11 +525,11 @@ public:
 protected:
 	
 	size_t indexof(const std::vector<int>& patt, const board& b) const {
-		// TODO1
-		size_t index = 0;
+		// TODO
+		size_t idx = 0;
 		for (size_t i = 0; i < patt.size(); i++)
-			index |= b.at(patt[i]) << (4 * i); // �N�� i �Ӥ�����ȡA���� i �� 4-bit ����m
-		return index;
+			idx |= b.at(patt[i]) << (4 * i); 
+		return idx;
 	}
 
 	std::string nameof(const std::vector<int>& patt) const {
@@ -751,13 +754,19 @@ public:
 	 */
 	void update_episode(std::vector<state>& path, float alpha = 0.1) const {
 		// TODO
-		float target = 0;
-		for (path.pop_back() /* ignore the last record */; path.size(); path.pop_back()) {
-			state& st = path.back();
-			// error
-			float error = target - estimate(st.after_state());
-			target = st.reward() + update(st.after_state(), alpha * error);
-			// debug << "update error = " << error << " for" << std::endl << st.afterstate();
+		float target_value = 0;
+		if(!path.empty()) path.pop_back();
+
+		for(auto it = path.rbegin(); it != path.rend(); it++){
+			state& curr_state = *it;
+			board before_state = curr_state.before_state();
+
+			float td_target = curr_state.reward() + target_value;
+			float curr_estimate = estimate(before_state);
+			float td_error = td_target - curr_estimate;
+			
+			float updated_value = update(before_state, alpha * td_error);
+			target_value = updated_value;
 		}
 	}
 
@@ -878,8 +887,8 @@ int main(int argc, const char* argv[]) {
 
 	// set the learning parameters
 	float alpha = 0.1;
-	size_t total = 200000;
-	// �T�w seed
+	size_t total = 1000;
+	// 固定 seed
 	unsigned seed = 0;
 	__asm__ __volatile__ ("rdtsc" : "=a" (seed));
 	info << "alpha = " << alpha << std::endl;
@@ -900,7 +909,7 @@ int main(int argc, const char* argv[]) {
 	tdl.add_feature(new pattern({1, 2, 5, 6})); 
 
 	// restore the model from file
-	// tdl.load("weights.bin");
+	tdl.load("weights.bin");
 
 	// train the model
 	std::vector<state> path;
@@ -935,7 +944,7 @@ int main(int argc, const char* argv[]) {
 	}
 
 	// store the model into file
-	tdl.save("weights.bin");
+	// tdl.save("weights.bin");
 
 	return 0;
 }
