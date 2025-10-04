@@ -167,8 +167,8 @@ public:
 
 	/**
 	 * add a new random tile on board, or do nothing if the board is full
-	 * 2-tile: 90%
-	 * 4-tile: 10%
+	 * 2-tile: 80%
+	 * 4-tile: 20%
 	 */
 	void popup() {
 		int space[16], num = 0;
@@ -177,7 +177,7 @@ public:
 				space[num++] = i;
 			}
 		if (num)
-			set(space[rand() % num], rand() % 10 ? 1 : 2);
+			set(space[rand() % num], rand() % 5 ? 1 : 2);
 	}
 
 	/**
@@ -889,8 +889,8 @@ int main(int argc, const char* argv[]) {
 	float alpha = 0.1;
 	size_t total = 1000;
 	// 固定 seed
-	unsigned seed = 0;
-	__asm__ __volatile__ ("rdtsc" : "=a" (seed));
+	unsigned seed = 3442824383;
+	// __asm__ __volatile__ ("rdtsc" : "=a" (seed));
 	info << "alpha = " << alpha << std::endl;
 	info << "total = " << total << std::endl;
 	info << "seed = " << seed << std::endl;
@@ -909,7 +909,7 @@ int main(int argc, const char* argv[]) {
 	tdl.add_feature(new pattern({1, 2, 5, 6})); 
 
 	// restore the model from file
-	tdl.load("weights.bin");
+	tdl.load("weights2.bin");
 
 	// train the model
 	std::vector<state> path;
@@ -944,7 +944,7 @@ int main(int argc, const char* argv[]) {
 	}
 
 	// store the model into file
-	// tdl.save("weights.bin");
+	// tdl.save("weights2.bin");
 
 	return 0;
 }
