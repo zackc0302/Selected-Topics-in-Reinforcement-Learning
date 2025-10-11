@@ -1,3 +1,4 @@
+# Question/base_agent.py
 import torch
 import torch.nn as nn
 import numpy as np
@@ -67,7 +68,7 @@ class DQNBaseAgent(ABC):
 			episode_idx += 1
 			while True:
 				if self.total_time_step < self.warmup_steps:
-					action = self.decide_agent_actions(observation, 1.0, self.env.action_space)
+					action = self.decide_agent_actions(observation, 0.95, self.env.action_space)
 				else:
 					action = self.decide_agent_actions(observation, self.epsilon, self.env.action_space)
 					self.epsilon_decay()
@@ -133,7 +134,3 @@ class DQNBaseAgent(ABC):
 	def load_and_evaluate(self, load_path):
 		self.load(load_path)
 		self.evaluate()
-
-
-
-

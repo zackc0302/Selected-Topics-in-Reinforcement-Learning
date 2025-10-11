@@ -1,4 +1,3 @@
-# Question/dqn_agent_atari.py
 import torch
 import torch.nn as nn
 import numpy as np
@@ -8,10 +7,10 @@ from models.atari_model import AtariNetDQN
 import gym
 import random
 from gym.wrappers import FrameStack, GrayScaleObservation, ResizeObservation
-
-class AtariDQNAgent(DQNBaseAgent):
+# agent 為 DDQN
+class AtariDDQNAgent(DQNBaseAgent):
 	def __init__(self, config):
-		super(AtariDQNAgent, self).__init__(config)
+		super(AtariDDQNAgent, self).__init__(config)
 		### TODO ###
 		# initialize env
 		self.env = gym.make(config["env_id"], render_mode='rgb_array')
@@ -32,7 +31,6 @@ class AtariDQNAgent(DQNBaseAgent):
 		self.target_net = AtariNetDQN(self.env.action_space.n)
 		self.target_net.to(self.device)
 		self.target_net.load_state_dict(self.behavior_net.state_dict())
-		
 		# initialize optimizer
 		self.lr = config["learning_rate"]
 		self.optim = torch.optim.Adam(self.behavior_net.parameters(), lr=self.lr, eps=1.5e-4)
@@ -44,13 +42,12 @@ class AtariDQNAgent(DQNBaseAgent):
 		if random.random() < epsilon:
 			action = action_space.sample()
 		else:
-			obs_array = np.array(observation) # 將 LazyFrames 轉成 numpy array
+			obs_array = np.array(observation)
 
-			if obs_array.shape[-1] == 1:													# FrameStack 會給出 (4, 84, 84, 1)，我們需要 (4, 84, 84)
-				obs_array = obs_array.squeeze(-1)  											# 移除最後一個維度
+			if obs_array.shape[-1] == 1:
+				obs_array = obs_array.squeeze(-1) 
 			
-			
-			obs_tensor = torch.from_numpy(obs_array).unsqueeze(0).float().to(self.device) # 轉成 tensor 並加上 batch 維度
+			obs_tensor = torch.from_numpy(obs_array).unsqueeze(0).float().to(self.device)
 			
 			with torch.no_grad():
 				q_values = self.behavior_net(obs_tensor)
@@ -59,6 +56,7 @@ class AtariDQNAgent(DQNBaseAgent):
 		return action
 	
 	def update_behavior_network(self):
+		# sample a minibatch of transitions
 		state, action, reward, next_state, done = self.replay_buffer.sample(self.batch_size, self.device)
 
 		# 修正維度問題：移除多餘的最後一個維度
@@ -72,15 +70,17 @@ class AtariDQNAgent(DQNBaseAgent):
 		q_value = q_values.gather(dim=1, index=action.long())
 
 		with torch.no_grad():
-			next_q_value = self.target_net(next_state).max(dim=1, keepdim=True)[0]
+			next_actions = self.behavior_net(next_state).max(dim=1, keepdim=True)[1]
+			next_q_value = self.target_net(next_state).gather(dim=1, index=next_actions)
 			q_target = reward + self.gamma * next_q_value * (1 - done)
 
 		criterion = nn.SmoothL1Loss()
 		loss = criterion(q_value, q_target)
 
-		self.writer.add_scalar('DQN/Loss', loss.item(), self.total_time_step)
+		self.writer.add_scalar('DDQN/Loss', loss.item(), self.total_time_step)
 
 		self.optim.zero_grad()
+
 		loss.backward()
 		torch.nn.utils.clip_grad_norm_(self.behavior_net.parameters(), max_norm=1.0)
 		self.optim.step()
