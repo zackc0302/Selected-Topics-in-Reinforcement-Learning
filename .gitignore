@@ -1,1 +1,7 @@
 *.exe
+*.bin
+.vscode
+*.pth
+*.pyc
+*.tfevents.*
+videos/

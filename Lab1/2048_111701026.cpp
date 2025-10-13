@@ -7,7 +7,7 @@
  * http://www.aigames.nctu.edu.tw
  *
  * References:
- * [1] Szubert, Marcin, and Wojciech Jaśkowski. "Temporal difference learning of n-tuple networks for the game 2048."
+ * [1] Szubert, Marcin, and Wojciech Ja?kowski. "Temporal difference learning of n-tuple networks for the game 2048."
  * Computational Intelligence and Games (CIG), 2014 IEEE Conference on. IEEE, 2014.
  * [2] Wu, I-Chen, et al. "Multi-stage temporal difference learning for 2048."
  * Technologies and Applications of Artificial Intelligence. Springer International Publishing, 2014. 366-378.
@@ -167,8 +167,8 @@ public:
 
 	/**
 	 * add a new random tile on board, or do nothing if the board is full
-	 * 2-tile: 90%
-	 * 4-tile: 10%
+	 * 2-tile: 80%
+	 * 4-tile: 20%
 	 */
 	void popup() {
 		int space[16], num = 0;
@@ -177,7 +177,7 @@ public:
 				space[num++] = i;
 			}
 		if (num)
-			set(space[rand() % num], rand() % 10 ? 1 : 2);
+			set(space[rand() % num], rand() % 5 ? 1 : 2);
 	}
 
 	/**
@@ -463,8 +463,10 @@ public:
 
 	/**
 	 * estimate the value of a given board
+	 * 將不同構面的權重值加總 = 盤面估值
 	 */
 	virtual float estimate(const board& b) const {
+		// TODO
 		float value = 0;
 		for(const auto& it:isomorphic){
 			size_t idx = indexof(it, b);
@@ -475,6 +477,7 @@ public:
 
 	/**
 	 * update the value of a given board, and return its updated value
+	 * 更新各盤面的價值(operator)，再透過更新的價值算出新盤面價值
 	 */
 	virtual float update(const board& b, float u) {
 		// TODO
@@ -520,13 +523,13 @@ public:
 	}
 
 protected:
-
+	
 	size_t indexof(const std::vector<int>& patt, const board& b) const {
 		// TODO
-		size_t index = 0;
+		size_t idx = 0;
 		for (size_t i = 0; i < patt.size(); i++)
-			index |= b.at(patt[i]) << (4 * i); // 將第 i 個方塊的值，放到第 i 個 4-bit 的位置
-		return index;
+			idx |= b.at(patt[i]) << (4 * i); 
+		return idx;
 	}
 
 	std::string nameof(const std::vector<int>& patt) const {
@@ -698,17 +701,41 @@ public:
 	 * you may simply return state() if no valid move
 	 */
 	state select_best_move(const board& b) const {
-		state best(b); 
-		state moves[4] = { state(b, 0), state(b, 1), state(b, 2), state(b, 3) };
-		for (state& move : moves) {
-			if (move.is_valid()) {
-				move.set_value(move.reward() + estimate(move.after_state()));
-				if (move.value() > best.value()) {
-					best = move; 
+		state after[4] = { 0, 1, 2, 3 }; // up, right, down, left
+		state* best = after;
+		for (state* move = after; move != after + 4; move++) {
+			if (move->assign(b)) {
+				// TODO
+				board after_state = move->after_state();
+				int space[16], num=0;
+				for (int i = 0; i < 16; i++)
+					if (after_state.at(i) == 0) {
+						space[num++] = i;
+					}
+				float expected_value = 0.0f;
+				if(num>0){
+					float total_value_sum = 0.0f;
+					for (int i = 0; i < num; i++) {
+						board tmp1 = after_state;
+						tmp1.set(space[i], 1);
+						total_value_sum += 0.8f * estimate(tmp1);
+
+						board tmp2 = after_state;
+						tmp2.set(space[i], 2);
+						total_value_sum += 0.2f * estimate(tmp2);
+					}
+					expected_value = total_value_sum / num;
 				}
+				move->set_value(move->reward() + expected_value);
+				
+				if (move->value() > best->value())
+					best = move;
+			} else {
+				move->set_value(-std::numeric_limits<float>::max());
 			}
+			// debug << "test " << *move;
 		}
-		return best;
+		return *best;
 	}
 
 	/**
@@ -727,12 +754,19 @@ public:
 	 */
 	void update_episode(std::vector<state>& path, float alpha = 0.1) const {
 		// TODO
-		float target = 0;
-		for (path.pop_back() /* ignore the last record */; path.size(); path.pop_back()) {
-			state& st = path.back();
-			float error = target - estimate(st.after_state());
-			target = st.reward() + update(st.after_state(), alpha * error);
-			// debug << "update error = " << error << " for" << std::endl << st.afterstate();
+		float target_value = 0;
+		if(!path.empty()) path.pop_back();
+
+		for(auto it = path.rbegin(); it != path.rend(); it++){
+			state& curr_state = *it;
+			board before_state = curr_state.before_state();
+
+			float td_target = curr_state.reward() + target_value;
+			float curr_estimate = estimate(before_state);
+			float td_error = td_target - curr_estimate;
+			
+			float updated_value = update(before_state, alpha * td_error);
+			target_value = updated_value;
 		}
 	}
 
@@ -853,9 +887,9 @@ int main(int argc, const char* argv[]) {
 
 	// set the learning parameters
 	float alpha = 0.1;
-	size_t total = 100000;
+	size_t total = 1000;
 	// 固定 seed
-	unsigned seed = 0;
+	unsigned seed = 3442824383;
 	// __asm__ __volatile__ ("rdtsc" : "=a" (seed));
 	info << "alpha = " << alpha << std::endl;
 	info << "total = " << total << std::endl;
@@ -867,9 +901,15 @@ int main(int argc, const char* argv[]) {
 	tdl.add_feature(new pattern({ 4, 5, 6, 7, 8, 9 }));
 	tdl.add_feature(new pattern({ 0, 1, 2, 4, 5, 6 }));
 	tdl.add_feature(new pattern({ 4, 5, 6, 8, 9, 10 }));
+	tdl.add_feature(new pattern({ 0, 1, 2, 3, 7, 11 }));
+	tdl.add_feature(new pattern({ 0, 1, 2, 3, 4, 8 }));
+
+	// Add 2*2 features
+	tdl.add_feature(new pattern({0, 1, 4, 5})); 
+	tdl.add_feature(new pattern({1, 2, 5, 6})); 
 
 	// restore the model from file
-	tdl.load("2048.bin");
+	tdl.load("weights2.bin");
 
 	// train the model
 	std::vector<state> path;
@@ -904,7 +944,7 @@ int main(int argc, const char* argv[]) {
 	}
 
 	// store the model into file
-	tdl.save("2048.bin");
+	// tdl.save("weights2.bin");
 
 	return 0;
 }
