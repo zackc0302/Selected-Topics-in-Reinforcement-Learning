@@ -6,13 +6,11 @@
 
 ## 目錄
 
-*   [環境設定 (Lab 0)](#Lab0)
-*   [Lab 1: 2048](#Lab1)
-*   [Lab 2: Deep Q-Network (DQN)](#Lab2)
-*   [Lab 3: Proximal Policy Optimization (PPO)](#Lab3)
-*   [Lab 4: Twin Delayed DDPG (TD3)](#Lab4)
-
-
+*   [環境設定 (Lab 0)](Lab0/)
+*   [Lab1 2048](Lab1/)
+*   [Lab2 DQN](Lab2/)
+*   [Lab3 PPO](Lab3/)
+*   [Lab4 TD3](Lab4/)
 
 ## Lab 0: 環境設定
 
