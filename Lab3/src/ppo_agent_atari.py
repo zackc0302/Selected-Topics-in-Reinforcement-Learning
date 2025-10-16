@@ -9,18 +9,24 @@ from replay_buffer.gae_replay_buffer import GaeSampleMemory
 from base_agent import PPOBaseAgent
 from models.atari_model import AtariNet
 import gym
-
+from gym.wrappers import FrameStack, GrayScaleObservation, ResizeObservation
 
 class AtariPPOAgent(PPOBaseAgent):
 	def __init__(self, config):
 		super(AtariPPOAgent, self).__init__(config)
 		### TODO ###
 		# initialize env
-		# self.env = ???
+		self.env = gym.make(config["env_id"], render_mode='rgb_array')
+		self.env = GrayScaleObservation(self.env)
+		self.env = ResizeObservation(self.env, shape=84)
+		self.env = FrameStack(self.env, num_stack=4)
 		
 		### TODO ###
 		# initialize test_env
-		# self.test_env = ???
+		self.test_env = gym.make(config["env_id"], render_mode="rgb_array") 
+		self.test_env = GrayScaleObservation(self.test_env)
+		self.test_env = ResizeObservation(self.test_env, shape=84)
+		self.test_env = FrameStack(self.test_env, num_stack=4)
 
 		self.net = AtariNet(self.env.action_space.n)
 		self.net.to(self.device)
@@ -33,13 +39,25 @@ class AtariPPOAgent(PPOBaseAgent):
 		# add batch dimension in observation
 		# get action, value, logp from net
 		
-		# if eval:
-		# 	with torch.no_grad():
-		# 		???, ???, ???, _ = self.net(observation, eval=True)
-		# else:
-		# 	???, ???, ???, _ = self.net(observation)
+		obs_array = np.array(observation)
+
+		if obs_array.ndim == 4 and obs_array.shape[-1] == 1:
+			obs_array = obs_array.squeeze(-1)  # 移除最後一個維度 -> (4, 84, 84)
+
+		obs_tensor = torch.from_numpy(obs_array).unsqueeze(0).to(self.device)
 		
-		return NotImplementedError
+		if obs_array.shape[-1] == 1:			# FrameStack 會給出 (4, 84, 84, 1)，我們需要 (4, 84, 84)
+			obs_array = obs_array.squeeze(-1)  	
+		
+		if eval:
+			with torch.no_grad():
+				action, logp, value, _ = self.net(obs_tensor, eval=True)
+		else:
+			action, logp, value, _ = self.net(obs_tensor)
+		
+		# Return action, value, and log_prob as numpy arrays
+		return action.cpu().numpy(), value.cpu().detach().numpy(), logp.cpu().detach().numpy()
+
 
 	
 	def update(self):
@@ -86,40 +104,43 @@ class AtariPPOAgent(PPOBaseAgent):
 
 				### TODO ###
 				# calculate loss and update network
-				# ???, ???, ???, ??? = self.net(...)
+				# Get new log_prob, value, and entropy from the network
+				_, logp_pi, v, entropy = self.net(ob_train_batch, a=ac_train_batch)
 
 				# calculate policy loss
-				# ratio = ???
-				# surrogate_loss = ???
+				ratio = torch.exp(logp_pi - logp_pi_train_batch)
+				surrogate1 = ratio * adv_train_batch
+				surrogate2 = torch.clamp(ratio, 1.0 - self.clip_epsilon, 1.0 + self.clip_epsilon) * adv_train_batch
+				surrogate_loss = -torch.min(surrogate1, surrogate2).mean()
 
 				# calculate value loss
-				# value_criterion = nn.MSELoss()
-				# v_loss = value_criterion(...)
+				value_criterion = nn.MSELoss()
+				v_loss = value_criterion(v, return_train_batch)
 				
 				# calculate total loss
-				# loss = surrogate_loss + self.value_coefficient * v_loss - self.entropy_coefficient * entropy
+				loss = surrogate_loss + self.value_coefficient * v_loss - self.entropy_coefficient * entropy.mean()
 
 				# update network
-				# self.optim.zero_grad()
-				# loss.backward()
-				# nn.utils.clip_grad_norm_(self.net.parameters(), self.max_gradient_norm)
-				# self.optim.step()
+				self.optim.zero_grad()
+				loss.backward()
+				nn.utils.clip_grad_norm_(self.net.parameters(), self.max_gradient_norm)
+				self.optim.step()
 
-				# total_surrogate_loss += surrogate_loss.item()
-				# total_v_loss += v_loss.item()
-				# total_entropy += entropy.item()
-				# total_loss += loss.item()
-				# loss_counter += 1
+				total_surrogate_loss += surrogate_loss.item()
+				total_v_loss += v_loss.item()
+				total_entropy += entropy.mean().item()
+				total_loss += loss.item()
+				loss_counter += 1
 
 		self.writer.add_scalar('PPO/Loss', total_loss / loss_counter, self.total_time_step)
 		self.writer.add_scalar('PPO/Surrogate Loss', total_surrogate_loss / loss_counter, self.total_time_step)
 		self.writer.add_scalar('PPO/Value Loss', total_v_loss / loss_counter, self.total_time_step)
 		self.writer.add_scalar('PPO/Entropy', total_entropy / loss_counter, self.total_time_step)
-		print(f"Loss: {total_loss / loss_counter}\
-			\tSurrogate Loss: {total_surrogate_loss / loss_counter}\
-			\tValue Loss: {total_v_loss / loss_counter}\
-			\tEntropy: {total_entropy / loss_counter}\
-			")
+		print((f"Loss: {total_loss / loss_counter}\n"
+			   f"\tSurrogate Loss: {total_surrogate_loss / loss_counter}\n"
+			   f"\tValue Loss: {total_v_loss / loss_counter}\n"
+			   f"\tEntropy: {total_entropy / loss_counter}"
+			   ))
 	
 
 

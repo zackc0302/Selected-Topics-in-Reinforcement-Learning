@@ -60,15 +60,28 @@ class PPOBaseAgent(ABC):
 			while True:
 				### TODO ###
 				# get action from net and get next information from env
+				action, value, logp_pi = self.decide_agent_actions(observation)
+				next_observation, reward, terminate, truncate, info = self.env.step(action[0])
 				
+				obs_array = np.array(observation)
 				
+				# 維度處理
+				if obs_array.ndim == 4 and obs_array.shape[-1] == 1:
+					obs_array = obs_array.squeeze(-1) 
+
 				# observation must be dict before storing into gae_replay_buffer
 				# dimension of reward, value, logp_pi, done must be the same
 				obs = {}
-				obs["observation_2d"] = np.asarray(observation, dtype=np.float32)
+				obs["observation_2d"] = obs_array.astype(np.float32)
 				self.gae_replay_buffer.append(0, {
 						### TODO ###
 						# store the transition into gae_replay_buffer
+						"observation": obs,
+						"action": action[0],
+						"reward": np.array(reward, dtype=np.float32),
+						"value": value,
+						"logp_pi": logp_pi,
+						"done": np.array(terminate, dtype=np.float32),
 					})
 
 				if len(self.gae_replay_buffer) >= self.update_sample_count:

@@ -27,7 +27,7 @@ class AtariNet(nn.Module):
         if init_weights:
             self._initialize_weights()
 
-    def forward(self, x, eval=False, a=[]):
+    def forward(self, x, eval=False, a=None):
         x = x.float() / 255.
         x = self.cnn(x)
         x = torch.flatten(x, start_dim=1)
@@ -42,7 +42,15 @@ class AtariNet(nn.Module):
         # Finish the forward function
         # Return action, action probability, value, entropy
 
-        return NotImplementedError
+        if a is None:
+            action = dist.sample()
+        else:
+            action = a
+        
+        log_prob = dist.log_prob(action) # 計算動作的對數機率
+        entropy = dist.entropy()         # 計算策略的熵
+
+        return action, log_prob, value, entropy
 
     def _initialize_weights(self):
         for m in self.modules():
