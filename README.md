@@ -24,18 +24,18 @@ This repo records the homeworks and note.
 
 ## Lab 2: Deep Q-Network (DQN)
 
-
-### Performance
-
-
-
+### Score
+|Demo|Question|
+|---|---|
+|50|20|
 
 ## Lab 3: Proximal Policy Optimization (PPO)
 
 
-### Performance
-
-
+### Score
+|Demo|Question|
+|---|---|
+|50||
 
 ## Lab 4: Twin Delayed DDPG (TD3)
 
