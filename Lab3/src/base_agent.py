@@ -74,15 +74,13 @@ class PPOBaseAgent(ABC):
 				obs = {}
 				obs["observation_2d"] = obs_array.astype(np.float32)
 				self.gae_replay_buffer.append(0, {
-						### TODO ###
-						# store the transition into gae_replay_buffer
-						"observation": obs,
-						"action": action[0],
-						"reward": np.array(reward, dtype=np.float32),
-						"value": value,
-						"logp_pi": logp_pi,
-						"done": np.array(terminate, dtype=np.float32),
-					})
+					"observation": obs,        # shape = (4,84,84)
+					"action": action,          # shape = (1,)
+					"reward": reward,          # shape = ()
+					"value": value[0],         # 從 (1,) 的 array 取出純量
+					"logp_pi": logp_pi[0],     # 從 (1,) 的 array 取出純量
+					"done": terminate,         # shape = ()
+				})
 
 				if len(self.gae_replay_buffer) >= self.update_sample_count:
 					self.update()

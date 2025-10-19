@@ -27,12 +27,17 @@ class AtariNet(nn.Module):
         if init_weights:
             self._initialize_weights()
 
-    def forward(self, x, eval=False, a=None):
+    def forward(self, x, eval=False, a=[]):
         x = x.float() / 255.
         x = self.cnn(x)
         x = torch.flatten(x, start_dim=1)
-        value = self.value(x)
-        value = torch.squeeze(value)
+        
+        value_raw = self.value(x)
+        ### --- 修正開始 --- ###
+        # 使用 squeeze(value, -1) 而不是 squeeze(value)
+        # 這確保當 batch size 為 1 時，(1, 1) -> (1,) 而不是變成 0 維純量
+        value = torch.squeeze(value_raw, -1)
+        ### --- 修正結束 --- ###
 
         logits = self.action_logits(x)
         
@@ -41,16 +46,17 @@ class AtariNet(nn.Module):
         ### TODO ###
         # Finish the forward function
         # Return action, action probability, value, entropy
-
-        if a is None:
+        
+        if len(a) == 0:
             action = dist.sample()
         else:
             action = a
         
-        log_prob = dist.log_prob(action) # 計算動作的對數機率
-        entropy = dist.entropy()         # 計算策略的熵
+        action_log_probs = F.log_softmax(logits, dim=-1)
 
-        return action, log_prob, value, entropy
+        entropy = dist.entropy()
+
+        return action, action_log_probs, value, entropy
 
     def _initialize_weights(self):
         for m in self.modules():
@@ -60,6 +66,3 @@ class AtariNet(nn.Module):
             elif isinstance(m, nn.Linear):
                 nn.init.orthogonal_(m.weight, np.sqrt(2))
                 nn.init.constant_(m.bias, 0.0)
-                
-
-
