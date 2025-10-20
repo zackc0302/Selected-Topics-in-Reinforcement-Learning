@@ -27,7 +27,7 @@ class AtariNet(nn.Module):
         if init_weights:
             self._initialize_weights()
 
-    def forward(self, x, eval=False, a=None):
+    def forward(self, x, eval=False, a=[]):
         x = x.float() / 255.
         x = self.cnn(x)
         x = torch.flatten(x, start_dim=1)
@@ -42,7 +42,7 @@ class AtariNet(nn.Module):
         # Finish the forward function
         # Return action, action probability, value, entropy
 
-        if a is None:
+        if len(a) == 0:
             action = dist.sample()
         else:
             action = a
