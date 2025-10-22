@@ -16,11 +16,13 @@ class AtariPPOAgent(PPOBaseAgent):
     def __init__(self, config):
         super(AtariPPOAgent, self).__init__(config)
         
+        ### TODO ###
         self.env = gym.make(config["env_id"])
         self.env = GrayScaleObservation(self.env)
         self.env = ResizeObservation(self.env, shape=84)
         self.env = FrameStack(self.env, num_stack=4)
         
+        ### TODO ###
         self.test_env = gym.make(config["env_id"], render_mode="rgb_array") 
         self.test_env = GrayScaleObservation(self.test_env)
         self.test_env = ResizeObservation(self.test_env, shape=84)
@@ -34,17 +36,10 @@ class AtariPPOAgent(PPOBaseAgent):
         
     def decide_agent_actions(self, observation, eval=False):
         obs_array = np.array(observation)
-        
-        ### --- 修正開始 --- ###
-        # 處理來自 Gym Wrapper 的額外維度
-        # 預期 shape: (4, 84, 84), C, H, W
-        # 實際可能得到: (4, 84, 84, 1)
+
         if obs_array.ndim == 4 and obs_array.shape[-1] == 1:
             obs_array = obs_array.squeeze(-1)
-        ### --- 修正結束 --- ###
-        
-        # 現在 obs_array 的 shape 是 (4, 84, 84)
-        # unsqueeze(0) 後變成 (1, 4, 84, 84)，這正是 CNN 需要的 (N, C, H, W) 格式
+
         obs_tensor = torch.from_numpy(obs_array).unsqueeze(0).to(self.device, dtype=torch.float32)
         
         if eval:
@@ -60,7 +55,6 @@ class AtariPPOAgent(PPOBaseAgent):
         return action.cpu().numpy(), value.cpu().detach().numpy(), logp_pi.cpu().detach().numpy()
 
     def update(self):
-        # ... (update 函式維持不變，使用我之前回覆的版本) ...
         loss_counter = 1e-6
         total_surrogate_loss = 0
         total_v_loss = 0

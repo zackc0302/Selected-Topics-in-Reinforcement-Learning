@@ -33,11 +33,7 @@ class AtariNet(nn.Module):
         x = torch.flatten(x, start_dim=1)
         
         value_raw = self.value(x)
-        ### --- 修正開始 --- ###
-        # 使用 squeeze(value, -1) 而不是 squeeze(value)
-        # 這確保當 batch size 為 1 時，(1, 1) -> (1,) 而不是變成 0 維純量
         value = torch.squeeze(value_raw, -1)
-        ### --- 修正結束 --- ###
 
         logits = self.action_logits(x)
         
