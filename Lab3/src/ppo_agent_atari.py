@@ -1,3 +1,4 @@
+# Lab3/src/ppo_agent_atari.py
 import torch
 import torch.nn as nn
 import numpy as np
@@ -39,15 +40,23 @@ class AtariPPOAgent(PPOBaseAgent):
 		# add batch dimension in observation
 		# get action, value, logp from net
 		
-		obs_array = np.array(observation)
-
-		if obs_array.ndim == 4 and obs_array.shape[-1] == 1:
-			obs_array = obs_array.squeeze(-1)  # 移除最後一個維度 -> (4, 84, 84)
-
-		obs_tensor = torch.from_numpy(obs_array).unsqueeze(0).to(self.device)
+		# Convert LazyFrames to numpy array
+		if hasattr(observation, '__array__'):
+			obs_array = np.array(observation)
+		else:
+			obs_array = observation
 		
-		if obs_array.shape[-1] == 1:			# FrameStack 會給出 (4, 84, 84, 1)，我們需要 (4, 84, 84)
-			obs_array = obs_array.squeeze(-1)  	
+		# Handle different observation shapes from FrameStack
+		# FrameStack returns shape (4, 84, 84) after preprocessing
+		if obs_array.ndim == 3:
+			# Shape is already (frames, height, width) = (4, 84, 84)
+			pass
+		elif obs_array.ndim == 4 and obs_array.shape[-1] == 1:
+			# Shape is (frames, height, width, 1), squeeze last dimension
+			obs_array = obs_array.squeeze(-1)
+		
+		# Add batch dimension -> (1, 4, 84, 84)
+		obs_tensor = torch.from_numpy(obs_array).unsqueeze(0).float().to(self.device)
 		
 		if eval:
 			with torch.no_grad():
@@ -55,10 +64,8 @@ class AtariPPOAgent(PPOBaseAgent):
 		else:
 			action, logp, value, _ = self.net(obs_tensor)
 		
-		# Return action, value, and log_prob as numpy arrays
+		# Return action, value, and log_prob as scalars/1D arrays
 		return action.cpu().numpy(), value.cpu().detach().numpy(), logp.cpu().detach().numpy()
-
-
 	
 	def update(self):
 		loss_counter = 0.0001
@@ -104,19 +111,18 @@ class AtariPPOAgent(PPOBaseAgent):
 
 				### TODO ###
 				# calculate loss and update network
-				# Get new log_prob, value, and entropy from the network
-				_, logp_pi, v, entropy = self.net(ob_train_batch, a=ac_train_batch)
+				_, logp_pi, value, entropy = self.net(ob_train_batch, a=ac_train_batch)
 
 				# calculate policy loss
 				ratio = torch.exp(logp_pi - logp_pi_train_batch)
 				surrogate1 = ratio * adv_train_batch
 				surrogate2 = torch.clamp(ratio, 1.0 - self.clip_epsilon, 1.0 + self.clip_epsilon) * adv_train_batch
-				surrogate_loss = -torch.min(surrogate1, surrogate2).mean()
+				surrogate_loss = -torch.mean(torch.min(surrogate1, surrogate2))
 
 				# calculate value loss
 				value_criterion = nn.MSELoss()
-				v_loss = value_criterion(v, return_train_batch)
-				
+				v_loss = value_criterion(value, return_train_batch)
+
 				# calculate total loss
 				loss = surrogate_loss + self.value_coefficient * v_loss - self.entropy_coefficient * entropy.mean()
 

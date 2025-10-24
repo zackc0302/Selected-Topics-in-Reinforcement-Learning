@@ -1,3 +1,4 @@
+# Lab3/src/models/atari_model.py
 import numpy as np
 import torch
 import torch.nn as nn
@@ -32,7 +33,7 @@ class AtariNet(nn.Module):
         x = self.cnn(x)
         x = torch.flatten(x, start_dim=1)
         value = self.value(x)
-        value = torch.squeeze(value)
+        value = torch.squeeze(value, dim=-1)  # Remove last dimension to make it 1D
 
         logits = self.action_logits(x)
         
@@ -47,8 +48,8 @@ class AtariNet(nn.Module):
         else:
             action = a
         
-        log_prob = dist.log_prob(action) # 計算動作的對數機率
-        entropy = dist.entropy()         # 計算策略的熵
+        log_prob = dist.log_prob(action)  # 計算動作的對數機率
+        entropy = dist.entropy()          # 計算策略的熵
 
         return action, log_prob, value, entropy
 

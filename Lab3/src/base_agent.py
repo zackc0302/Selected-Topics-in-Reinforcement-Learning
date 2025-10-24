@@ -1,3 +1,4 @@
+# Lab3/src/base_agent.py
 import torch
 import torch.nn as nn
 import numpy as np
@@ -63,25 +64,34 @@ class PPOBaseAgent(ABC):
 				action, value, logp_pi = self.decide_agent_actions(observation)
 				next_observation, reward, terminate, truncate, info = self.env.step(action[0])
 				
-				obs_array = np.array(observation)
+				# Convert LazyFrames to numpy array
+				if hasattr(observation, '__array__'):
+					obs_array = np.array(observation)
+				else:
+					obs_array = observation
 				
-				# 維度處理
-				if obs_array.ndim == 4 and obs_array.shape[-1] == 1:
-					obs_array = obs_array.squeeze(-1) 
+				# Handle different observation shapes from FrameStack
+				if obs_array.ndim == 3:
+					# Shape is already (frames, height, width) = (4, 84, 84)
+					pass
+				elif obs_array.ndim == 4 and obs_array.shape[-1] == 1:
+					# Shape is (frames, height, width, 1), squeeze last dimension
+					obs_array = obs_array.squeeze(-1)
 
 				# observation must be dict before storing into gae_replay_buffer
 				# dimension of reward, value, logp_pi, done must be the same
 				obs = {}
 				obs["observation_2d"] = obs_array.astype(np.float32)
+				
 				self.gae_replay_buffer.append(0, {
 						### TODO ###
 						# store the transition into gae_replay_buffer
 						"observation": obs,
-						"action": action[0],
-						"reward": np.array(reward, dtype=np.float32),
-						"value": value,
-						"logp_pi": logp_pi,
-						"done": np.array(terminate, dtype=np.float32),
+						"action": action,
+						"reward": np.array([reward], dtype=np.float32),
+						"value": value.flatten(),  # Ensure value is 1D
+						"logp_pi": logp_pi.flatten(),  # Ensure logp_pi is 1D
+						"done": np.array([terminate], dtype=np.float32),
 					})
 
 				if len(self.gae_replay_buffer) >= self.update_sample_count:
@@ -143,7 +153,3 @@ class PPOBaseAgent(ABC):
 	def load_and_evaluate(self, load_path):
 		self.load(load_path)
 		self.evaluate()
-
-
-	
-
