@@ -33,23 +33,20 @@ class AtariNet(nn.Module):
         x = self.cnn(x)
         x = torch.flatten(x, start_dim=1)
         value = self.value(x)
-        value = torch.squeeze(value, dim=-1)  # Remove last dimension to make it 1D
+        value = torch.squeeze(value, dim=-1)
 
         logits = self.action_logits(x)
         
         dist = Categorical(logits=logits)
         
-        ### TODO ###
-        # Finish the forward function
-        # Return action, action probability, value, entropy
-
-        if len(a) == 0:
+        # 檢查 a 的類型
+        if isinstance(a, (list, tuple)) and len(a) == 0:
             action = dist.sample()
         else:
             action = a
         
-        log_prob = dist.log_prob(action)  # 計算動作的對數機率
-        entropy = dist.entropy()          # 計算策略的熵
+        log_prob = dist.log_prob(action)  
+        entropy = dist.entropy()
 
         return action, log_prob, value, entropy
 

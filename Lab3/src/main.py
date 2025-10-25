@@ -12,7 +12,7 @@ if __name__ == '__main__':
 		"clip_epsilon": 0.2,
 		"max_gradient_norm": 0.5,
 		"batch_size": 128,
-		"logdir": 'log/Enduro_2.5e4/',
+		"logdir": 'log/Enduro_fix/',
 		"update_ppo_epoch": 3,
 		"learning_rate": 2.5e-4,
 		"value_coefficient": 0.5,

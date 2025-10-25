@@ -26,7 +26,7 @@ if __name__ == '__main__':
     "clip_epsilon": 0.2,
     "max_gradient_norm": 0.5, 
     "batch_size": 128, 
-    "logdir": 'log/Enduro_release/',
+    "logdir": 'log/Enduro_demo/',
     "update_ppo_epoch": 3, 
     "learning_rate": 2.5e-4, 
     "value_coefficient": 0.5,
@@ -36,7 +36,8 @@ if __name__ == '__main__':
     }
 
 # ========== 在這裡填入 explore.py 找到的最佳結果 ==========
-BEST_MODEL_PATH = 'log/Enduro_release/model_2994300_0.pth' # <<<< 貼上最佳模型路徑
+# BEST_MODEL_PATH = 'log/Enduro_release/model_97997648_1655.pth' # <<<< 貼上最佳模型路徑
+BEST_MODEL_PATH = 'log/Enduro_fix/model_16967700_0.pth' 
 BEST_SEED = 42                                                 # <<<< 貼上最佳種子
 # ==========================================================
 
