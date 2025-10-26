@@ -1,3 +1,4 @@
+# Lab3/src/models/atari_model.py
 import numpy as np
 import torch
 import torch.nn as nn
@@ -31,25 +32,20 @@ class AtariNet(nn.Module):
         x = x.float() / 255.
         x = self.cnn(x)
         x = torch.flatten(x, start_dim=1)
-        
-        value_raw = self.value(x)
-        value = torch.squeeze(value_raw, -1)
+        value = self.value(x)
+        value = torch.squeeze(value, dim=-1)
 
         logits = self.action_logits(x)
         
         dist = Categorical(logits=logits)
         
-        ### TODO ###
-        # Finish the forward function
-        # Return action, action probability, value, entropy
-        
-        if len(a) == 0:
+        # 檢查 a 的類型
+        if isinstance(a, (list, tuple)) and len(a) == 0:
             action = dist.sample()
         else:
             action = a
         
-        action_log_probs = F.log_softmax(logits, dim=-1)
-
+        log_prob = dist.log_prob(action)  
         entropy = dist.entropy()
 
         return action, action_log_probs, value, entropy

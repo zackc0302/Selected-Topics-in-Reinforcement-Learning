@@ -1,3 +1,4 @@
+# Lab3/src/base_agent.py
 import torch
 import torch.nn as nn
 import numpy as np
@@ -57,29 +58,43 @@ class PPOBaseAgent(ABC):
 			episode_reward = 0
 			episode_len = 0
 			episode_idx += 1
+			
 			while True:
 				### TODO ###
 				# get action from net and get next information from env
 				action, value, logp_pi = self.decide_agent_actions(observation)
 				next_observation, reward, terminate, truncate, info = self.env.step(action[0])
 				
-				obs_array = np.array(observation)
+				# 使用 agent 的處理函數
+				# 確保 observation 形狀正確
+				if hasattr(self, '_process_observation'):
+					obs_array = self._process_observation(observation)
+				else:
+					if hasattr(observation, '__array__'):
+						obs_array = np.array(observation)
+					else:
+						obs_array = observation
+					
+					# 檢查格式問題
+					if obs_array.ndim == 4 and obs_array.shape[-1] == 1:
+						obs_array = obs_array.squeeze(-1)
+					
+					obs_array = obs_array.astype(np.float32)
 				
-				# 維度處理
-				if obs_array.ndim == 4 and obs_array.shape[-1] == 1:
-					obs_array = obs_array.squeeze(-1) 
-
 				# observation must be dict before storing into gae_replay_buffer
-				# dimension of reward, value, logp_pi, done must be the same
 				obs = {}
-				obs["observation_2d"] = obs_array.astype(np.float32)
+				obs["observation_2d"] = obs_array
+				
+				# dimension of reward, value, logp_pi, done must be the same
 				self.gae_replay_buffer.append(0, {
-					"observation": obs,        # shape = (4,84,84)
-					"action": action,          # shape = (1,)
-					"reward": reward,          # shape = ()
-					"value": value[0],         # 從 (1,) 的 array 取出純量
-					"logp_pi": logp_pi[0],     # 從 (1,) 的 array 取出純量
-					"done": terminate,         # shape = ()
+					### TODO ###
+					# store the transition into gae_replay_buffer
+					"observation": obs,
+					"action": action,
+					"reward": np.array([reward], dtype=np.float32),
+					"value": value.flatten(),
+					"logp_pi": logp_pi.flatten(),
+					"done": np.array([terminate], dtype=np.float32),
 				})
 
 				if len(self.gae_replay_buffer) >= self.update_sample_count:
@@ -92,7 +107,11 @@ class PPOBaseAgent(ABC):
 				if terminate or truncate:
 					self.writer.add_scalar('Train/Episode Reward', episode_reward, self.total_time_step)
 					self.writer.add_scalar('Train/Episode Len', episode_len, self.total_time_step)
-					print(f"[{len(self.gae_replay_buffer)}/{self.update_sample_count}][{self.total_time_step}/{self.training_steps}]  episode: {episode_idx}  episode reward: {episode_reward}  episode len: {episode_len}")
+					print(f"[{len(self.gae_replay_buffer)}/{self.update_sample_count}]"
+						f"[{self.total_time_step}/{self.training_steps}]  "
+						f"episode: {episode_idx}  "
+						f"reward: {episode_reward}  "
+						f"len: {episode_len}")
 					break
 					
 				observation = next_observation
@@ -103,7 +122,7 @@ class PPOBaseAgent(ABC):
 				avg_score = self.evaluate()
 				self.save(os.path.join(self.writer.log_dir, f"model_{self.total_time_step}_{int(avg_score)}.pth"))
 				self.writer.add_scalar('Evaluate/Episode Reward', avg_score, self.total_time_step)
-
+            
 	def evaluate(self):
 		print("==============================================")
 		print("Evaluating...")
@@ -141,7 +160,3 @@ class PPOBaseAgent(ABC):
 	def load_and_evaluate(self, load_path):
 		self.load(load_path)
 		self.evaluate()
-
-
-	
-
