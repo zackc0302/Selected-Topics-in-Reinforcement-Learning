@@ -58,6 +58,3 @@ class AtariNet(nn.Module):
             elif isinstance(m, nn.Linear):
                 nn.init.orthogonal_(m.weight, np.sqrt(2))
                 nn.init.constant_(m.bias, 0.0)
-                
-
-

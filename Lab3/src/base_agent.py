@@ -65,18 +65,17 @@ class PPOBaseAgent(ABC):
 				action, value, logp_pi = self.decide_agent_actions(observation)
 				next_observation, reward, terminate, truncate, info = self.env.step(action[0])
 				
-				# 使用 agent 的處理函數（如果有的話）
+				# 使用 agent 的處理函數
 				# 確保 observation 形狀正確
 				if hasattr(self, '_process_observation'):
 					obs_array = self._process_observation(observation)
 				else:
-					# fallback: 基本處理
 					if hasattr(observation, '__array__'):
 						obs_array = np.array(observation)
 					else:
 						obs_array = observation
 					
-					# 簡單處理常見情況
+					# 檢查格式問題
 					if obs_array.ndim == 4 and obs_array.shape[-1] == 1:
 						obs_array = obs_array.squeeze(-1)
 					
