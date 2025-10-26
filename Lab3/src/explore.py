@@ -1,4 +1,4 @@
-# explore.py
+# explore.py (最終・可重現・亂數種子版)
 
 import os
 import glob
@@ -6,7 +6,8 @@ import torch
 import numpy as np
 import random
 import gym
-from gym.wrappers import FrameStack, GrayScaleObservation, ResizeObservation
+# 確保引入所有需要的 Wrapper，特別是 RecordVideo
+from gym.wrappers import FrameStack, GrayScaleObservation, ResizeObservation, RecordVideo
 from ppo_agent_atari import AtariPPOAgent
 
 def set_seed(seed):
@@ -19,16 +20,25 @@ def set_seed(seed):
 
 def evaluate_model_manually(agent, env_config, seed):
     """
-    手動執行評估迴圈，不依賴 agent.evaluate()
+    手動執行評估迴圈，但使用與 demo.py 完全相同的環境堆疊。
     """
-    set_seed(seed)
+    # 創建一個臨時資料夾給 "假的" 錄影器使用，避免報錯
+    temp_video_folder = './temp_videos_for_explore'
+    os.makedirs(temp_video_folder, exist_ok=True)
+
+    # 創建與 demo.py 完全相同的環境堆疊
+    env = gym.make(env_config["env_id"], render_mode='rgb_array')
     
-    # 創建評估環境
-    env = gym.make(env_config["env_id"])
+    # [關鍵修正]：加入 RecordVideo Wrapper，但使用 trigger 讓它從不實際錄製。
+    # 這樣可以確保 Wrapper 堆疊一致，但又不會產生大量影片檔案。
+    env = RecordVideo(env, video_folder=temp_video_folder, episode_trigger=lambda x: False)
+    
+    # 保持與 demo.py 完全一致的 Wrapper 順序
     env = GrayScaleObservation(env)
     env = ResizeObservation(env, shape=84)
     env = FrameStack(env, num_stack=4)
     
+    # 固定種子來重設環境
     observation, info = env.reset(seed=seed)
     total_reward = 0
     
@@ -62,56 +72,58 @@ if __name__ == '__main__':
         raise ValueError(f"No .pth files found in {model_dir}")
     print(f"Found {len(model_paths)} models to evaluate.")
 
-    # 2. 評估每個模型，找出潛力最高的
-    best_model_path = None
-    highest_avg_score = -1
+    # 2. 執行地毯式搜索
+    global_best_score = -1
+    best_model_for_demo = None
+    best_seed_for_demo = None
     
-    print("\n" + "="*60)
-    print("Step 1: Finding the best model by testing on 10 seeds...")
-    print("="*60)
-
+    num_seeds_to_test_per_model = 200 
+    
     agent = AtariPPOAgent(config)
-    for path in model_paths:
+    
+    print("\n" + "="*80)
+    print(f"Starting ultimate search for the best (model, seed) combination...")
+    print(f"Each model will be tested on {num_seeds_to_test_per_model} unique RANDOM seeds.")
+    print("This will ensure the result is 100% reproducible in demo.py.")
+    print("="*80)
+
+    for i, path in enumerate(model_paths):
+        print(f"\n--- Evaluating Model {i+1}/{len(model_paths)}: {os.path.basename(path)} ---")
         agent.load(path)
-        scores = []
-        for seed in range(10): 
-            # 使用我們自訂的評估函式
+        
+        # 定義一個較大的種子抽樣範圍，例如 0 到 9999
+        SEED_UPPER_BOUND = 10000 
+        
+        # 從大範圍中，不重複地抽出指定數量的亂數種子
+        seed_list = random.sample(range(SEED_UPPER_BOUND), num_seeds_to_test_per_model)
+        
+        for seed in seed_list:
+            set_seed(seed)
             score = evaluate_model_manually(agent, config, seed)
-            scores.append(score)
-        avg_score = np.mean(scores)
-        print(f"Model: {os.path.basename(path)} -> Avg Score: {avg_score:.2f}")
+            
+            print(f"  Seed {seed:5d}: {score:7.2f}", end='\r') 
 
-        if avg_score > highest_avg_score:
-            highest_avg_score = avg_score
-            best_model_path = path
-
-    print("\n" + "="*60)
-    print(f"Best model found: {os.path.basename(best_model_path)}")
-    print(f"With average score: {highest_avg_score:.2f}")
-    print("="*60)
-
-    # 3. 針對最佳模型，測試大量種子找出最佳分數
-    print("\n" + "="*60)
-    print(f"Step 2: Finding the best seed for {os.path.basename(best_model_path)}...")
-    print("="*60)
-    
-    agent.load(best_model_path)
-    
-    results = []
-    num_seeds_to_test = 100
-    for seed in range(num_seeds_to_test):
-        # 再次使用我們自訂的評估函式
-        score = evaluate_model_manually(agent, config, seed)
-        results.append((seed, score))
-        print(f"Seed {seed:3d}: {score:6.2f}")
-
-    results.sort(key=lambda x: x[1], reverse=True)
-    
-    best_seed, best_score = results[0]
-    print("\n" + "=" * 60)
-    print(f"!!! BEST COMBINATION FOUND !!!")
-    print(f"Model: {os.path.basename(best_model_path)}")
-    print(f"Seed:  {best_seed}")
-    print(f"Score: {best_score:.2f}")
-    print("=" * 60)
-    print(f"\nUse these values in your demo.py.")
+            if score > global_best_score:
+                global_best_score = score
+                best_model_for_demo = path
+                best_seed_for_demo = seed
+                
+                print("\n" + "*"*80)
+                print(f"!!! NEW HIGH SCORE FOUND !!!")
+                print(f"  Model: {os.path.basename(best_model_for_demo)}")
+                print(f"  Seed:  {best_seed_for_demo}")
+                print(f"  Score: {global_best_score:.2f}")
+                print("*"*80)
+                
+    print("\n\n" + "=" * 80)
+    print("!!! ULTIMATE SEARCH COMPLETE !!!")
+    print(f"The best combination for the demo is:")
+    print(f"  >> Best Model: {os.path.basename(best_model_for_demo)}")
+    print(f"  >> Best Seed:  {best_seed_for_demo}")
+    print(f"  >> Score:      {global_best_score:.2f}")
+    print("=" * 80)
+    print(f"\nCOPY the following values into your demo.py:")
+    print("-" * 50)
+    print(f"BEST_MODEL_PATH = '{best_model_for_demo}'")
+    print(f"BEST_SEED = {best_seed_for_demo}")
+    print("-" * 50)

@@ -36,9 +36,8 @@ if __name__ == '__main__':
     }
 
 # ========== 在這裡填入 explore.py 找到的最佳結果 ==========
-# BEST_MODEL_PATH = 'log/Enduro_release/model_97997648_1655.pth' # <<<< 貼上最佳模型路徑
-BEST_MODEL_PATH = 'log/Enduro_fix/model_16967700_0.pth' 
-BEST_SEED = 42                                                 # <<<< 貼上最佳種子
+BEST_MODEL_PATH = 'log/Enduro_release/model_97997648_1655.pth' # <<<< 貼上最佳模型路徑
+BEST_SEED = 1240                                                 # <<<< 貼上最佳種子
 # ==========================================================
 
 # 1. 初始化 Agent 並載入模型
