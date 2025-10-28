@@ -13,7 +13,7 @@ if __name__ == '__main__':
 		"lra": 4.5e-5,
 		"lrc": 4.5e-5,
 		"replay_buffer_capacity": 5000,
-		"logdir": 'log/CarRacing/td3_test/',
+		"logdir": 'log/CarRacing/td3_firstRun/',
 		"update_freq": 2,
 		"eval_interval": 10,
 		"eval_episode": 10,
