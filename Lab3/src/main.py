@@ -23,4 +23,5 @@ if __name__ == '__main__':
 		"eval_episode": 3,
 	}
 	agent = AtariPPOAgent(config)
-	agent.train()
+	# agent.train()
+	agent.load_and_evaluate('log/Enduro_fix/model_97997648_1655.pth')

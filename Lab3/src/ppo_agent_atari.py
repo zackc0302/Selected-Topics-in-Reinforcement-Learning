@@ -98,9 +98,9 @@ class AtariPPOAgent(PPOBaseAgent):
         # ===使用統一的處理函數(start)===
         try:
             obs_array = self._process_observation(observation)
-            if self.total_time_step < 5:
-                print(f"  After processing shape: {obs_array.shape}")
-                print(f"  After processing range: [{obs_array.min()}, {obs_array.max()}]")
+            # if self.total_time_step < 5:
+            #     print(f"  After processing shape: {obs_array.shape}")
+            #     print(f"  After processing range: [{obs_array.min()}, {obs_array.max()}]")
         except Exception as e:
             print(f"\nERROR in _process_observation:")
             print(f"  {e}")
