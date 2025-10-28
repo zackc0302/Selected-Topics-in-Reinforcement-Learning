@@ -1,6 +1,7 @@
 # Lab3/src/ppo_agent_atari.py
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import numpy as np
 import os
 import time

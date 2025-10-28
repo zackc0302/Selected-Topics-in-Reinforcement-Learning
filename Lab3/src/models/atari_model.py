@@ -48,7 +48,7 @@ class AtariNet(nn.Module):
         log_prob = dist.log_prob(action)  
         entropy = dist.entropy()
 
-        return action, log_prob, value, entropy
+        return action, action_log_probs, value, entropy
 
     def _initialize_weights(self):
         for m in self.modules():
