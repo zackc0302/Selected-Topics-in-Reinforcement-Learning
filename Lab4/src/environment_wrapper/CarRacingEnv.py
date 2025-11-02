@@ -5,11 +5,22 @@ import random
 import time
 import cv2
 
-import gym
+import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
+
+# === 手動重新註冊 CarRacing-v2 ===
+try:
+    gym.spec("CarRacing-v2")
+except gym.error.Error:
+    gym.register(
+        id="CarRacing-v2",
+        entry_point="gymnasium.envs.box2d:CarRacing",
+        max_episode_steps=1000,
+        reward_threshold=900,
+    )
 
 class CarRacingEnvironment:
 	def __init__(self, N_frame=4, test=False):
@@ -55,7 +66,7 @@ class CarRacingEnvironment:
 		# my reward shaping strategy, you can try your own
 		if road_pixel_count < 10:
 			terminates = True
-			reward = -100
+			reward = -30
 
 		# convert to grayscale
 		obs = cv2.cvtColor(obs, cv2.COLOR_BGR2GRAY) # 96x96
@@ -96,7 +107,7 @@ class CarRacingEnvironment:
 
 if __name__ == '__main__':
 	env = CarRacingEnvironment(test=True)
-	obs, info = env.reset()
+	obs, info = env.reset() # DEMO時有指定的seed
 	done = False
 	total_reward = 0
 	total_length = 0
