@@ -104,7 +104,7 @@ if __name__ == '__main__':
     print("Initializing TD3 Agent...")
     agent = CarRacingTD3Agent(config)
     
-    demo_seeds = [0, 1, 2, 3, 4]
+    demo_seeds = [512, 7016, 16384, 2501, 1919]
     
     model_path = "log/CarRacing/td3_firstRun/model_2827069_887.pth"
     
